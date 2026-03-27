@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f172a">
+<title>Setup Buddy</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root {
+  --bg: #f8fafc; --card: #ffffff; --border: #e2e8f0; --text: #0f172a;
+  --text2: #475569; --text3: #94a3b8; --accent: #2563eb; --accent-light: #dbeafe;
+  --blue-cold: #E6F1FB; --blue-text: #0C447C; --blue-label: #185FA5;
+  --amber-hot: #FAEEDA; --amber-text: #633806; --amber-label: #854F0B;
+  --green: #16a34a; --green-bg: #dcfce7; --red: #dc2626; --red-bg: #fef2f2;
+  --orange: #ea580c; --orange-bg: #fff7ed;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: #f1f5f9; color: var(--text); -webkit-tap-highlight-color: transparent; }
+.app { max-width: 430px; margin: 0 auto; min-height: 100vh; background: var(--bg); }
+.top-bar { position: sticky; top: 0; z-index: 100; background: #0f172a; }
+.header { padding: 16px 20px 12px; color: white; }
+.header h1 { font-size: 18px; font-weight: 700; }
+.header-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+.kart-selector { display: flex; gap: 6px; margin-top: 8px; }
+.kart-btn { padding: 5px 12px; border-radius: 6px; border: 1.5px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 600; cursor: pointer; background: transparent; color: #94a3b8; font-family: inherit; transition: all 0.15s; }
+.kart-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.nav { display: flex; padding: 0 16px 12px; gap: 6px; }
+.nav-btn { flex: 1; padding: 8px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.08); color: #94a3b8; font-family: inherit; }
+.nav-btn.active { background: var(--accent); color: white; }
+.screen { display: none; padding: 16px 20px 100px; }
+.screen.active { display: block; }
+.session-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.session-pill { padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border); font-size: 13px; font-weight: 500; cursor: pointer; background: white; color: var(--text2); transition: all 0.15s; }
+.session-pill.active { background: var(--accent); color: white; border-color: var(--accent); }
+select.session-pill { appearance: none; padding-right: 10px; }
+.field-row { display: flex; gap: 10px; margin-bottom: 10px; }
+.field { flex: 1; background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.field-full { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+.field label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; font-weight: 500; }
+.field .unit { font-size: 12px; color: var(--text3); margin-left: 4px; }
+.field input { width: 100%; border: none; font-size: 20px; font-weight: 600; font-family: inherit; color: var(--text); background: transparent; outline: none; }
+.field input::placeholder { color: var(--text3); font-weight: 400; }
+.field-full label { font-size: 13px; color: var(--text2); font-weight: 500; }
+.field-full input { border: none; font-size: 18px; font-weight: 600; text-align: right; width: 120px; font-family: inherit; color: var(--text); background: transparent; outline: none; }
+.unit-toggle { font-size: 12px; color: var(--accent); cursor: pointer; font-weight: 600; text-decoration: underline; margin-left: 4px; }
+.pressure-box { background: var(--card); border: 1.5px solid var(--border); border-radius: 12px; padding: 14px 12px; margin-bottom: 10px; }
+.pressure-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.pressure-header span { font-size: 14px; font-weight: 600; }
+.pressure-header .unit-label { font-size: 12px; color: var(--text3); font-weight: 500; }
+.pressure-grid { display: grid; grid-template-columns: 1fr 16px 1fr; gap: 8px; align-items: center; }
+.pressure-corner { display: flex; gap: 5px; position: relative; }
+.corner-label { position: absolute; font-size: 12px; font-weight: 600; color: var(--text); z-index: 1; }
+.corner-label.tl { top: 3px; left: 6px; } .corner-label.tr { top: 3px; right: 6px; }
+.corner-label.bl { bottom: 3px; left: 6px; } .corner-label.br { bottom: 3px; right: 6px; }
+.p-cell { flex: 1; border-radius: 8px; padding: 18px 4px 8px; text-align: center; }
+.p-cell.cold { background: var(--blue-cold); }
+.p-cell.hot { background: var(--amber-hot); }
+.p-cell .p-label { font-size: 11px; margin-bottom: 2px; }
+.p-cell.cold .p-label { color: var(--blue-label); }
+.p-cell.hot .p-label { color: var(--amber-label); }
+.p-cell input { width: 100%; border: none; font-size: 20px; font-weight: 600; text-align: center; background: transparent; outline: none; font-family: inherit; }
+.p-cell.cold input { color: var(--blue-text); }
+.p-cell.hot input { color: var(--amber-text); }
+.btn-primary { width: 100%; padding: 14px; font-size: 15px; font-weight: 600; border-radius: 10px; border: none; cursor: pointer; font-family: inherit; background: var(--accent); color: white; transition: all 0.15s; }
+.btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+.btn-complete { background: var(--green); }
+.btn-secondary { width: 100%; padding: 12px; font-size: 14px; font-weight: 500; border-radius: 10px; border: 1.5px solid var(--border); cursor: pointer; font-family: inherit; background: var(--card); color: var(--text2); margin-bottom: 10px; }
+.tire-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+.tire-card.selected { border-color: var(--accent); background: var(--accent-light); }
+.tire-info h3 { font-size: 15px; font-weight: 600; }
+.tire-info p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.tire-laps { text-align: right; }
+.tire-laps .num { font-size: 22px; font-weight: 700; }
+.tire-laps .label { font-size: 11px; color: var(--text3); }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge.new { background: var(--green-bg); color: var(--green); }
+.badge.good { background: var(--accent-light); color: var(--accent); }
+.badge.past { background: #fef3c7; color: #92400e; }
+.badge.done { background: var(--red-bg); color: var(--red); }
+.badge.active-stint { background: var(--orange-bg); color: var(--orange); }
+.badge.completed-stint { background: var(--green-bg); color: var(--green); }
+.notes-field { width: 100%; min-height: 70px; border: 1.5px solid var(--border); border-radius: 10px; padding: 12px; font-family: inherit; font-size: 14px; resize: vertical; outline: none; margin-bottom: 10px; }
+.notes-field:focus { border-color: var(--accent); }
+.advanced-toggle { text-align: center; padding: 12px; color: var(--text3); font-size: 13px; cursor: pointer; margin-bottom: 10px; }
+.advanced-section { display: none; }
+.advanced-section.open { display: block; }
+.toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #0f172a; color: white; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 500; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text3); margin: 20px 0 10px; }
+/* Active stint banner */
+.stint-banner { background: var(--orange-bg); border: 1.5px solid var(--orange); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+.stint-banner span { font-size: 13px; font-weight: 600; color: var(--orange); }
+/* History */
+.stint-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; }
+.stint-card:active { background: #f8fafc; }
+.stint-card h3 { font-size: 14px; font-weight: 600; }
+.stint-card p { font-size: 12px; color: var(--text2); margin-top: 2px; }
+.stint-time { font-size: 11px; color: var(--text3); margin-top: 4px; }
+.date-group { font-size: 13px; font-weight: 700; color: var(--text2); margin: 16px 0 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+/* Detail view */
+.detail-back { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--accent); font-weight: 600; cursor: pointer; margin-bottom: 12px; }
+.detail-section { margin-bottom: 16px; }
+.detail-section h4 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); margin-bottom: 6px; }
+.detail-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
+.detail-row .dl { color: var(--text2); } .detail-row .dv { font-weight: 600; }
+.empty { text-align: center; padding: 40px 20px; color: var(--text3); }
+.empty h3 { font-size: 16px; color: var(--text2); margin-bottom: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top-bar">
+    <div class="header">
+      <h1>Setup Buddy</h1>
+      <div class="header-sub" id="headerSub">Loading...</div>
+      <div class="kart-selector" id="kartSelector"></div>
+    </div>
+    <div class="nav">
+      <button class="nav-btn active" onclick="showScreen('setup')">Setup</button>
+      <button class="nav-btn" onclick="showScreen('tires')">Tires</button>
+      <button class="nav-btn" onclick="showScreen('history')">History</button>
+    </div>
+  </div>
+
+  <!-- SETUP SCREEN -->
+  <div class="screen active" id="screen-setup">
+    <div class="session-bar">
+      <div class="session-pill active" id="pillTrack">Track</div>
+      <select class="session-pill" id="sessionType" onchange="updateSessionType()">
+        <option>Practice</option><option>Qualifying</option><option>Pre-Final</option><option>Final</option>
+      </select>
+      <select class="session-pill" id="trackCondition">
+        <option>Green</option><option>Dusty</option><option selected>Normal</option><option>Rubbered</option><option>Grippy</option>
+      </select>
+    </div>
+
+    <!-- Active stint banner (shown when stint is in progress) -->
+    <div class="stint-banner" id="activeBanner" style="display:none;">
+      <span id="activeBannerText">Stint 1 in progress...</span>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <span style="font-size:15px;font-weight:600;">Stint <span id="stintNum">1</span> <span id="stintPhase" style="font-size:12px;color:var(--text3);font-weight:500;"></span></span>
+    </div>
+
+    <div class="field-full">
+      <label>Front track width</label>
+      <div><input type="number" id="frontTrack" placeholder="1040" style="width:80px;font-size:18px;"> <span id="frontTrackUnit" class="unit-toggle" onclick="toggleTrackUnit()">mm</span></div>
+    </div>
+
+    <div class="pressure-box">
+      <div class="pressure-header"><span>Tire pressures</span><span class="unit-label">PSI</span></div>
+      <div class="pressure-grid" style="margin-bottom:10px;">
+        <div class="pressure-corner">
+          <span class="corner-label tl">FL</span>
+          <div class="p-cell cold"><div class="p-label">cold</div><input type="number" step="0.1" id="cp_fl" placeholder="16"></div>
+          <div class="p-cell hot"><div class="p-label">hot</div><input type="number" step="0.1" id="hp_fl" placeholder="18"></div>
+        </div><div></div>
+        <div class="pressure-corner">
+          <span class="corner-label tr">FR</span>
+          <div class="p-cell cold"><div class="p-label">cold</div><input type="number" step="0.1" id="cp_fr" placeholder="16"></div>
+          <div class="p-cell hot"><div class="p-label">hot</div><input type="number" step="0.1" id="hp_fr" placeholder="18"></div>
+        </div>
+      </div>
+      <div class="pressure-grid">
+        <div class="pressure-corner">
+          <span class="corner-label bl">RL</span>
+          <div class="p-cell cold"><div class="p-label">cold</div><input type="number" step="0.1" id="cp_rl" placeholder="16"></div>
+          <div class="p-cell hot"><div class="p-label">hot</div><input type="number" step="0.1" id="hp_rl" placeholder="18"></div>
+        </div><div></div>
+        <div class="pressure-corner">
+          <span class="corner-label br">RR</span>
+          <div class="p-cell cold"><div class="p-label">cold</div><input type="number" step="0.1" id="cp_rr" placeholder="16"></div>
+          <div class="p-cell hot"><div class="p-label">hot</div><input type="number" step="0.1" id="hp_rr" placeholder="18"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field-full">
+      <label>Rear track width</label>
+      <div><input type="number" id="rearTrack" placeholder="1395" style="width:80px;font-size:18px;"> <span id="rearTrackUnit" class="unit-toggle" onclick="toggleTrackUnit()">mm</span></div>
+    </div>
+
+    <div class="field-row">
+      <div class="field"><label>Tire set</label>
+        <select id="tireSetSelect" style="width:100%;border:none;font-size:16px;font-weight:600;font-family:inherit;color:var(--text);background:transparent;outline:none;"></select>
+      </div>
+      <div class="field"><label>Rear sprocket</label><div><input type="number" id="rearSprocket" placeholder="82"> <span class="unit">teeth</span></div></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label><strong>Low</strong>-speed needle</label><div><input type="number" step="0.125" id="needleLow" placeholder="1.0"> <span class="unit">turns</span></div></div>
+      <div class="field"><label><strong>High</strong>-speed needle</label><div><input type="number" step="0.125" id="needleHigh" placeholder="1.25"> <span class="unit">turns</span></div></div>
+    </div>
+
+    <!-- Pre-stint notes -->
+    <textarea class="notes-field" id="notesPre" placeholder="Pre-stint notes... (setup changes made)"></textarea>
+
+    <!-- Post-stint notes (shown only in phase 2) -->
+    <div id="postStintSection" style="display:none;">
+      <div class="section-label">Post-stint</div>
+      <textarea class="notes-field" id="notesPost" placeholder="Post-stint notes... (how the kart felt, observations)"></textarea>
+    </div>
+
+    <!-- Advanced -->
+    <div class="advanced-toggle" onclick="toggleAdvanced()"><span id="advLabel">Show advanced setup (12 fields)</span></div>
+    <div class="advanced-section" id="advancedSection">
+      <div class="field-row">
+        <div class="field"><label>Front sprocket</label><input type="number" id="frontSprocket" placeholder="10"></div>
+        <div class="field"><label>Axle type</label><input type="text" id="axleType" placeholder="Medium" style="font-size:16px;"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Front ride height</label><input type="number" id="frontRideHeight" placeholder="mm"></div>
+        <div class="field"><label>Rear ride height</label><input type="number" id="rearRideHeight" placeholder="mm"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Camber FL</label><input type="number" step="0.1" id="camberFL" placeholder="deg"></div>
+        <div class="field"><label>Camber FR</label><input type="number" step="0.1" id="camberFR" placeholder="deg"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Caster L</label><input type="number" step="0.1" id="casterL" placeholder="deg"></div>
+        <div class="field"><label>Caster R</label><input type="number" step="0.1" id="casterR" placeholder="deg"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Toe front</label><input type="number" step="0.5" id="toeFront" placeholder="mm"></div>
+        <div class="field"><label>Rear bumper</label>
+          <select id="rearBumper" style="width:100%;border:none;font-size:16px;font-weight:600;font-family:inherit;background:transparent;outline:none;">
+            <option value="">—</option><option>Loose</option><option>Tight</option><option>Removed</option>
+          </select></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Seat position</label><input type="text" id="seatPosition" placeholder="struts" style="font-size:16px;"></div>
+        <div class="field"><label>Total weight</label><input type="number" step="0.1" id="totalWeight" placeholder="kg"></div>
+      </div>
+    </div>
+
+    <!-- Phase-dependent buttons -->
+    <button class="btn-primary" id="btnStartStint" onclick="startStint()">Save pre-stint setup</button>
+    <button class="btn-primary btn-complete" id="btnCompleteStint" onclick="completeStint()" style="display:none;">Complete stint</button>
+  </div>
+
+  <!-- TIRES SCREEN -->
+  <div class="screen" id="screen-tires">
+    <div class="section-label">Tire sets</div>
+    <div id="tireList"></div>
+    <button class="btn-secondary" onclick="showAddTire()">+ Add tire set</button>
+    <div id="addTireForm" style="display:none;margin-top:12px;">
+      <div class="field-row">
+        <div class="field"><label>Set #</label><input type="number" id="newTireNum" placeholder="5"></div>
+        <div class="field"><label>Brand</label><input type="text" id="newTireBrand" placeholder="Hoosier" style="font-size:16px;"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Compound</label><input type="text" id="newTireCompound" placeholder="R60B" style="font-size:16px;"></div>
+        <div class="field"><label>Condition</label>
+          <select id="newTireCondition" style="width:100%;border:none;font-size:16px;font-weight:600;font-family:inherit;background:transparent;outline:none;">
+            <option>new</option><option>good</option><option>past peak</option><option>done</option>
+          </select></div>
+      </div>
+      <button class="btn-primary" onclick="addTireSet()" style="margin-top:8px;">Save tire set</button>
+    </div>
+  </div>
+
+  <!-- HISTORY SCREEN -->
+  <div class="screen" id="screen-history">
+    <div id="historyListView">
+      <div class="section-label">All setups</div>
+      <div id="historyList"></div>
+    </div>
+    <div id="historyDetailView" style="display:none;">
+      <div class="detail-back" onclick="closeDetail()">&larr; Back to list</div>
+      <div id="historyDetail"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://mbdosilxitruwzkwdxzw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ZWg4ix5Cd1PLurWoFPsDXQ_QdsNfG4t';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let state = {
+  karts: [], kart: null, track: null, session: null,
+  stintNumber: 1, tireSets: [], selectedTireSet: null,
+  todayStints: [], allStints: [], lastSetup: null,
+  trackUnit: 'mm',
+  activeStint: null, // currently in-progress stint
+  phase: 'pre', // 'pre' or 'post'
+};
+
+const PSI_TO_BAR=0.0689476, BAR_TO_PSI=14.5038, MM_TO_IN=0.0393701, IN_TO_MM=25.4;
+function psiToBar(p){return p?p*PSI_TO_BAR:null}
+function barToPsi(b){return b?(b*BAR_TO_PSI).toFixed(1):''}
+function mmToIn(m){return m?(m*MM_TO_IN).toFixed(2):''}
+function inToMm(i){return i?Math.round(i*IN_TO_MM):null}
+function getTrackMm(id){const v=floatVal(id);if(!v)return null;return state.trackUnit==='in'?inToMm(v):Math.round(v)}
+function displayTrackVal(mm){if(!mm)return'';return state.trackUnit==='in'?mmToIn(mm):mm}
+function toggleTrackUnit(){
+  const f=getTrackMm('frontTrack'),r=getTrackMm('rearTrack');
+  state.trackUnit=state.trackUnit==='mm'?'in':'mm';
+  document.getElementById('frontTrackUnit').textContent=state.trackUnit;
+  document.getElementById('rearTrackUnit').textContent=state.trackUnit;
+  if(f)document.getElementById('frontTrack').value=displayTrackVal(f);
+  if(r)document.getElementById('rearTrack').value=displayTrackVal(r);
+  document.getElementById('frontTrack').placeholder=state.trackUnit==='in'?'41.0':'1040';
+  document.getElementById('rearTrack').placeholder=state.trackUnit==='in'?'54.9':'1395';
+}
+function intVal(id){const v=document.getElementById(id).value;return v?parseInt(v):null}
+function floatVal(id){const v=document.getElementById(id).value;return v?parseFloat(v):null}
+function strVal(id){const v=document.getElementById(id).value;return v||null}
+function fmtTime(ts){if(!ts)return'';return new Date(ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true})}
+function fmtDate(d){return new Date(d+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500)}
+
+function collectSetupData() {
+  return {
+    front_track_mm: getTrackMm('frontTrack'), rear_track_mm: getTrackMm('rearTrack'),
+    rear_sprocket: intVal('rearSprocket'), front_sprocket: intVal('frontSprocket'),
+    cold_pres_fl_bar: psiToBar(floatVal('cp_fl')), cold_pres_fr_bar: psiToBar(floatVal('cp_fr')),
+    cold_pres_rl_bar: psiToBar(floatVal('cp_rl')), cold_pres_rr_bar: psiToBar(floatVal('cp_rr')),
+    hot_pres_fl_bar: psiToBar(floatVal('hp_fl')), hot_pres_fr_bar: psiToBar(floatVal('hp_fr')),
+    hot_pres_rl_bar: psiToBar(floatVal('hp_rl')), hot_pres_rr_bar: psiToBar(floatVal('hp_rr')),
+    needle_low_turns: floatVal('needleLow'), needle_high_turns: floatVal('needleHigh'),
+    front_ride_height_mm: intVal('frontRideHeight'), rear_ride_height_mm: intVal('rearRideHeight'),
+    seat_position: strVal('seatPosition'), axle_type: strVal('axleType'), rear_bumper: strVal('rearBumper'),
+    camber_fl_deg: floatVal('camberFL'), camber_fr_deg: floatVal('camberFR'),
+    caster_l_deg: floatVal('casterL'), caster_r_deg: floatVal('casterR'),
+    toe_front_mm: floatVal('toeFront'), total_weight_kg: floatVal('totalWeight'),
+  };
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  try {
+    const {data:karts}=await sb.from('karts').select('*').order('name');
+    state.karts=karts||[];
+    if(state.karts.length){
+      const lastId=localStorage.getItem('selectedKartId');
+      state.kart=state.karts.find(k=>k.id===lastId)||state.karts[0];
+    }
+    renderKartSelector();
+    const {data:tracks}=await sb.from('tracks').select('*').limit(1);
+    if(tracks&&tracks.length) state.track=tracks[0];
+    await switchToKart(state.kart);
+  } catch(e) {
+    console.error('Init error:',e);
+    document.getElementById('headerSub').textContent='Connection error';
+  }
+}
+
+async function switchToKart(kart) {
+  if(!kart) return;
+  state.kart=kart;
+  localStorage.setItem('selectedKartId',kart.id);
+  renderKartSelector();
+  await loadTireSets();
+  await getOrCreateSession();
+  await loadTodayStints();
+  await checkForActiveStint();
+  if(!state.activeStint) await prefillFromLastStint();
+  updatePhaseUI();
+  updateUI();
+  document.getElementById('headerSub').textContent=
+    `${state.track?.name||'No track'} · ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}`;
+  document.getElementById('pillTrack').textContent=state.track?.name||'Track';
+}
+
+function renderKartSelector(){
+  document.getElementById('kartSelector').innerHTML=state.karts.map(k=>
+    `<button class="kart-btn ${state.kart?.id===k.id?'active':''}" onclick="selectKart('${k.id}')">${k.name}</button>`
+  ).join('');
+}
+async function selectKart(id){const k=state.karts.find(x=>x.id===id);if(k)await switchToKart(k)}
+
+async function getOrCreateSession(){
+  const today=new Date().toISOString().split('T')[0];
+  const {data:ex}=await sb.from('sessions').select('*').eq('kart_id',state.kart.id).eq('track_id',state.track.id).eq('session_date',today).limit(1);
+  if(ex&&ex.length){state.session=ex[0]}
+  else{const {data:cr}=await sb.from('sessions').insert({kart_id:state.kart.id,track_id:state.track.id,session_date:today,session_type:'Practice'}).select().single();state.session=cr}
+}
+
+async function loadTireSets(){
+  const {data}=await sb.from('tire_sets').select('*').eq('kart_id',state.kart.id).order('set_number');
+  state.tireSets=data||[];state.selectedTireSet=null;updateTireSelect();renderTireList();
+}
+
+async function loadTodayStints(){
+  if(!state.session)return;
+  const {data}=await sb.from('stints').select('*, setup_snapshots(*), tire_sets(set_number, brand, compound)').eq('session_id',state.session.id).order('stint_number');
+  state.todayStints=data||[];
+  state.stintNumber=(state.todayStints.length||0)+1;
+  // If there's an active stint, the stint number is the active one
+  const active=state.todayStints.find(s=>s.status==='active');
+  if(active) state.stintNumber=active.stint_number;
+}
+
+async function checkForActiveStint(){
+  // Check if there's an active (started but not completed) stint for this session
+  const active=state.todayStints.find(s=>s.status==='active');
+  if(active){
+    state.activeStint=active;
+    state.phase='post';
+    state.stintNumber=active.stint_number;
+    // Load the setup data into the form
+    const setup=active.setup_snapshots?.[0];
+    if(setup) fillFormFromSetup(setup);
+    if(active.tire_set_id){state.selectedTireSet=active.tire_set_id;updateTireSelect()}
+    document.getElementById('notesPre').value=active.notes_pre||'';
+    document.getElementById('notesPost').value=active.notes_post||'';
+    document.getElementById('trackCondition').value=active.track_condition||'Normal';
+  } else {
+    state.activeStint=null;
+    state.phase='pre';
+    // Stint number is next after completed stints
+    const completed=state.todayStints.filter(s=>s.status==='completed');
+    state.stintNumber=completed.length+1;
+  }
+}
+
+function fillFormFromSetup(setup){
+  document.getElementById('frontTrack').value=displayTrackVal(setup.front_track_mm)||'';
+  document.getElementById('rearTrack').value=displayTrackVal(setup.rear_track_mm)||'';
+  document.getElementById('rearSprocket').value=setup.rear_sprocket||'';
+  document.getElementById('cp_fl').value=barToPsi(setup.cold_pres_fl_bar);
+  document.getElementById('cp_fr').value=barToPsi(setup.cold_pres_fr_bar);
+  document.getElementById('cp_rl').value=barToPsi(setup.cold_pres_rl_bar);
+  document.getElementById('cp_rr').value=barToPsi(setup.cold_pres_rr_bar);
+  document.getElementById('hp_fl').value=barToPsi(setup.hot_pres_fl_bar);
+  document.getElementById('hp_fr').value=barToPsi(setup.hot_pres_fr_bar);
+  document.getElementById('hp_rl').value=barToPsi(setup.hot_pres_rl_bar);
+  document.getElementById('hp_rr').value=barToPsi(setup.hot_pres_rr_bar);
+  document.getElementById('needleLow').value=setup.needle_low_turns||'';
+  document.getElementById('needleHigh').value=setup.needle_high_turns||'';
+  document.getElementById('frontSprocket').value=setup.front_sprocket||'';
+  document.getElementById('axleType').value=setup.axle_type||'';
+  document.getElementById('frontRideHeight').value=setup.front_ride_height_mm||'';
+  document.getElementById('rearRideHeight').value=setup.rear_ride_height_mm||'';
+  document.getElementById('camberFL').value=setup.camber_fl_deg||'';
+  document.getElementById('camberFR').value=setup.camber_fr_deg||'';
+  document.getElementById('casterL').value=setup.caster_l_deg||'';
+  document.getElementById('casterR').value=setup.caster_r_deg||'';
+  document.getElementById('toeFront').value=setup.toe_front_mm||'';
+  document.getElementById('rearBumper').value=setup.rear_bumper||'';
+  document.getElementById('seatPosition').value=setup.seat_position||'';
+  document.getElementById('totalWeight').value=setup.total_weight_kg||'';
+}
+
+async function prefillFromLastStint(){
+  let setup=null;
+  const completed=state.todayStints.filter(s=>s.status==='completed');
+  if(completed.length>0){
+    const last=completed[completed.length-1];
+    if(last.setup_snapshots?.length) setup=last.setup_snapshots[0];
+    if(last.tire_set_id){state.selectedTireSet=last.tire_set_id;updateTireSelect()}
+  }
+  if(!setup){
+    const {data}=await sb.from('setup_snapshots').select('*').order('created_at',{ascending:false}).limit(1);
+    if(data&&data.length) setup=data[0];
+  }
+  if(setup){
+    state.lastSetup=setup;
+    fillFormFromSetup(setup);
+    // Clear hot pressures for new stint
+    ['hp_fl','hp_fr','hp_rl','hp_rr'].forEach(id=>document.getElementById(id).value='');
+  }
+  document.getElementById('notesPre').value='';
+  document.getElementById('notesPost').value='';
+}
+
+function updatePhaseUI(){
+  const num=document.getElementById('stintNum');
+  const phase=document.getElementById('stintPhase');
+  const banner=document.getElementById('activeBanner');
+  const bannerText=document.getElementById('activeBannerText');
+  const btnStart=document.getElementById('btnStartStint');
+  const btnComplete=document.getElementById('btnCompleteStint');
+  const postSection=document.getElementById('postStintSection');
+
+  num.textContent=state.stintNumber;
+
+  if(state.phase==='pre'){
+    phase.textContent='— pre-stint';
+    banner.style.display='none';
+    btnStart.style.display='block';
+    btnComplete.style.display='none';
+    postSection.style.display='none';
+  } else {
+    phase.textContent='— post-stint';
+    banner.style.display='flex';
+    bannerText.textContent=`Stint ${state.stintNumber} in progress — complete when done`;
+    btnStart.style.display='none';
+    btnComplete.style.display='block';
+    postSection.style.display='block';
+  }
+}
+
+// ============================================================
+// TWO-PHASE SAVE
+// ============================================================
+async function startStint(){
+  if(!state.session){toast('Error: no session');return}
+  try {
+    const {data:stint,error:stintErr}=await sb.from('stints').insert({
+      session_id: state.session.id, stint_number: state.stintNumber,
+      track_condition: document.getElementById('trackCondition').value,
+      surface_condition: 'Dry', tire_set_id: state.selectedTireSet,
+      notes_pre: strVal('notesPre'), status: 'active', started_at: new Date().toISOString(),
+    }).select().single();
+    if(stintErr) throw stintErr;
+
+    const setupData=collectSetupData();
+    setupData.stint_id=stint.id;
+    const {error:setupErr}=await sb.from('setup_snapshots').insert(setupData);
+    if(setupErr) throw setupErr;
+
+    // Fetch weather
+    fetchWeather(stint.id);
+
+    state.activeStint=stint;
+    state.phase='post';
+    await loadTodayStints();
+    await checkForActiveStint();
+    updatePhaseUI();
+    toast('Stint '+state.stintNumber+' started!');
+  } catch(e){
+    console.error('Start stint error:',e);
+    toast('Error: '+e.message);
+  }
+}
+
+async function completeStint(){
+  if(!state.activeStint){toast('No active stint');return}
+  try {
+    // Update stint with post-stint data
+    const {error:stintErr}=await sb.from('stints').update({
+      status: 'completed', completed_at: new Date().toISOString(),
+      track_condition: document.getElementById('trackCondition').value,
+      notes_pre: strVal('notesPre'), notes_post: strVal('notesPost'),
+    }).eq('id',state.activeStint.id);
+    if(stintErr) throw stintErr;
+
+    // Update setup snapshot with any changes (cold pressures, hot pressures, etc)
+    const setupData=collectSetupData();
+    const {error:setupErr}=await sb.from('setup_snapshots').update(setupData)
+      .eq('stint_id',state.activeStint.id);
+    if(setupErr) throw setupErr;
+
+    toast('Stint '+state.stintNumber+' completed!');
+
+    // Reset for next stint
+    state.activeStint=null;
+    state.phase='pre';
+    await loadTodayStints();
+    state.stintNumber=state.todayStints.filter(s=>s.status==='completed').length+1;
+    // Clear hot pressures and post notes for next stint
+    ['hp_fl','hp_fr','hp_rl','hp_rr'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('notesPost').value='';
+    document.getElementById('notesPre').value='';
+    updatePhaseUI();
+    renderHistory();
+  } catch(e){
+    console.error('Complete stint error:',e);
+    toast('Error: '+e.message);
+  }
+}
+
+// ============================================================
+// WEATHER
+// ============================================================
+async function fetchWeather(stintId){
+  if(!state.track?.latitude||!state.track?.longitude)return;
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${state.track.latitude}&longitude=${state.track.longitude}&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_direction_10m,precipitation`);
+    const wx=await r.json();const c=wx.current;
+    const tempK=c.temperature_2m+273.15;
+    const airDensity=(c.surface_pressure*100)/(287.05*tempK);
+    await sb.from('weather').insert({stint_id:stintId,temp_c:c.temperature_2m,humidity_pct:c.relative_humidity_2m,pressure_hpa:c.surface_pressure,wind_speed_kmh:c.wind_speed_10m,wind_direction_deg:c.wind_direction_10m,air_density:Math.round(airDensity*1000)/1000,precip_last_24h_mm:c.precipitation});
+  }catch(e){console.error('Weather error:',e)}
+}
+
+// ============================================================
+// TIRES
+// ============================================================
+function renderTireList(){
+  const el=document.getElementById('tireList');
+  if(!state.tireSets.length){el.innerHTML='<div class="empty"><h3>No tire sets</h3><p>Add your first set below</p></div>';return}
+  el.innerHTML=state.tireSets.map(t=>`
+    <div class="tire-card ${state.selectedTireSet===t.id?'selected':''}" onclick="selectTire('${t.id}')">
+      <div class="tire-info"><h3>#${t.set_number} — ${t.brand||''} ${t.compound||''}</h3>
+        <p><span class="badge ${t.condition==='new'?'new':t.condition==='good'?'good':t.condition==='past peak'?'past':'done'}">${t.condition}</span> · First used: ${t.first_used||'never'}</p></div>
+      <div class="tire-laps"><div class="num">${t.cumulative_laps}</div><div class="label">laps</div></div>
+    </div>`).join('');
+}
+function selectTire(id){state.selectedTireSet=id;renderTireList();updateTireSelect()}
+function updateTireSelect(){
+  const sel=document.getElementById('tireSetSelect');
+  sel.innerHTML='<option value="">—</option>'+state.tireSets.map(t=>
+    `<option value="${t.id}" ${state.selectedTireSet===t.id?'selected':''}>#${t.set_number} ${t.brand||''} · ${t.cumulative_laps}laps</option>`).join('');
+  sel.onchange=function(){state.selectedTireSet=this.value||null;renderTireList()};
+}
+function showAddTire(){
+  const f=document.getElementById('addTireForm');
+  f.style.display=f.style.display==='none'?'block':'none';
+  if(f.style.display==='block'){
+    document.getElementById('newTireNum').value=state.tireSets.length?Math.max(...state.tireSets.map(t=>t.set_number))+1:1;
+    document.getElementById('newTireBrand').value='Hoosier';
+    document.getElementById('newTireCompound').value='R60B';
+  }
+}
+async function addTireSet(){
+  const {error}=await sb.from('tire_sets').insert({kart_id:state.kart.id,set_number:parseInt(document.getElementById('newTireNum').value),brand:document.getElementById('newTireBrand').value||null,compound:document.getElementById('newTireCompound').value||null,condition:document.getElementById('newTireCondition').value,cumulative_laps:0,first_used:new Date().toISOString().split('T')[0]});
+  if(error){toast('Error: '+error.message);return}
+  document.getElementById('addTireForm').style.display='none';
+  await loadTireSets();toast('Tire set added!');
+}
+
+// ============================================================
+// HISTORY — Full list with detail view
+// ============================================================
+async function loadAllStints(){
+  // First get all session IDs for this kart
+  const {data:sessions}=await sb.from('sessions').select('id, session_date, track_id, tracks(name)')
+    .eq('kart_id',state.kart.id).order('session_date',{ascending:false});
+  if(!sessions||!sessions.length){state.allStints=[];renderHistory();return}
+  const sessionIds=sessions.map(s=>s.id);
+  const sessionMap={};
+  sessions.forEach(s=>{sessionMap[s.id]=s});
+
+  const {data:stints,error}=await sb.from('stints').select(`
+    *, setup_snapshots(*), tire_sets(set_number, brand, compound), weather(*)
+  `).in('session_id',sessionIds).order('created_at',{ascending:false}).limit(100);
+  if(error) console.error('Load stints error:',error);
+
+  // Attach session info to each stint
+  state.allStints=(stints||[]).map(s=>({...s, sessions:sessionMap[s.session_id]}));
+  renderHistory();
+}
+
+function renderHistory(){
+  const el=document.getElementById('historyList');
+  if(!state.allStints.length){
+    el.innerHTML='<div class="empty"><h3>No setups yet</h3><p>Save your first stint to see it here</p></div>';
+    return;
+  }
+  // Group by date
+  const grouped={};
+  state.allStints.forEach(s=>{
+    const d=s.sessions?.session_date||'Unknown';
+    if(!grouped[d]) grouped[d]=[];
+    grouped[d].push(s);
+  });
+
+  let html='';
+  for(const [date,stints] of Object.entries(grouped)){
+    html+=`<div class="date-group">${fmtDate(date)} · ${stints[0].sessions?.tracks?.name||state.track?.name||''}</div>`;
+    stints.forEach(s=>{
+      const setup=s.setup_snapshots?.[0];
+      const tire=s.tire_sets;
+      const parts=[];
+      if(setup?.rear_sprocket) parts.push(`${setup.rear_sprocket}t`);
+      if(setup?.rear_track_mm) parts.push(`R:${setup.rear_track_mm}mm`);
+      if(tire) parts.push(`#${tire.set_number} ${tire.brand||''}`);
+      if(setup?.cold_pres_fl_bar) parts.push(`Cold FL:${barToPsi(setup.cold_pres_fl_bar)}`);
+      const statusBadge=s.status==='active'
+        ?'<span class="badge active-stint">in progress</span>'
+        :'<span class="badge completed-stint">done</span>';
+      html+=`
+        <div class="stint-card" onclick="showDetail('${s.id}')">
+          <h3>Stint ${s.stint_number} · ${s.track_condition||'Normal'} ${statusBadge}</h3>
+          <p>${parts.join(' · ')}</p>
+          ${s.notes_pre?`<p style="margin-top:3px;font-size:12px;color:var(--text3);font-style:italic">"${s.notes_pre.substring(0,60)}${s.notes_pre.length>60?'...':''}"</p>`:''}
+          <div class="stint-time">${s.started_at?'Started '+fmtTime(s.started_at):''}${s.completed_at?' · Completed '+fmtTime(s.completed_at):''}</div>
+        </div>`;
+    });
+  }
+  el.innerHTML=html;
+}
+
+function showDetail(stintId){
+  const s=state.allStints.find(x=>x.id===stintId);
+  if(!s)return;
+  const setup=s.setup_snapshots?.[0]||{};
+  const tire=s.tire_sets;
+  const wx=s.weather?.[0];
+
+  function row(label,val,unit=''){return val?`<div class="detail-row"><span class="dl">${label}</span><span class="dv">${val}${unit?' '+unit:''}</span></div>`:''}
+
+  let html=`<h3 style="font-size:16px;font-weight:700;margin-bottom:4px;">Stint ${s.stint_number} · ${s.track_condition||'Normal'}</h3>`;
+  html+=`<p style="font-size:12px;color:var(--text3);margin-bottom:16px;">`;
+  if(s.started_at) html+=`Started: ${fmtTime(s.started_at)}`;
+  if(s.completed_at) html+=` · Completed: ${fmtTime(s.completed_at)}`;
+  html+=`</p>`;
+
+  html+=`<div class="detail-section"><h4>Chassis</h4>`;
+  html+=row('Front track',displayTrackVal(setup.front_track_mm),state.trackUnit);
+  html+=row('Rear track',displayTrackVal(setup.rear_track_mm),state.trackUnit);
+  html+=row('Rear sprocket',setup.rear_sprocket,'t');
+  html+=row('Front sprocket',setup.front_sprocket,'t');
+  html+=`</div>`;
+
+  html+=`<div class="detail-section"><h4>Cold pressures (PSI)</h4>`;
+  html+=row('FL',barToPsi(setup.cold_pres_fl_bar));
+  html+=row('FR',barToPsi(setup.cold_pres_fr_bar));
+  html+=row('RL',barToPsi(setup.cold_pres_rl_bar));
+  html+=row('RR',barToPsi(setup.cold_pres_rr_bar));
+  html+=`</div>`;
+
+  if(setup.hot_pres_fl_bar||setup.hot_pres_fr_bar||setup.hot_pres_rl_bar||setup.hot_pres_rr_bar){
+    html+=`<div class="detail-section"><h4>Hot pressures (PSI)</h4>`;
+    html+=row('FL',barToPsi(setup.hot_pres_fl_bar));
+    html+=row('FR',barToPsi(setup.hot_pres_fr_bar));
+    html+=row('RL',barToPsi(setup.hot_pres_rl_bar));
+    html+=row('RR',barToPsi(setup.hot_pres_rr_bar));
+    html+=`</div>`;
+  }
+
+  html+=`<div class="detail-section"><h4>Engine</h4>`;
+  html+=row('Low needle',setup.needle_low_turns,'turns');
+  html+=row('High needle',setup.needle_high_turns,'turns');
+  html+=`</div>`;
+
+  if(tire){
+    html+=`<div class="detail-section"><h4>Tires</h4>`;
+    html+=row('Set',`#${tire.set_number} ${tire.brand||''} ${tire.compound||''}`);
+    html+=`</div>`;
+  }
+
+  // Advanced fields
+  const advFields=[
+    ['Axle type',setup.axle_type],['Front ride height',setup.front_ride_height_mm,'mm'],
+    ['Rear ride height',setup.rear_ride_height_mm,'mm'],['Camber FL',setup.camber_fl_deg,'deg'],
+    ['Camber FR',setup.camber_fr_deg,'deg'],['Caster L',setup.caster_l_deg,'deg'],
+    ['Caster R',setup.caster_r_deg,'deg'],['Toe front',setup.toe_front_mm,'mm'],
+    ['Rear bumper',setup.rear_bumper],['Seat position',setup.seat_position],
+    ['Total weight',setup.total_weight_kg,'kg'],
+  ].filter(([_,v])=>v);
+  if(advFields.length){
+    html+=`<div class="detail-section"><h4>Advanced</h4>`;
+    advFields.forEach(([l,v,u])=>{html+=row(l,v,u||'')});
+    html+=`</div>`;
+  }
+
+  if(wx){
+    html+=`<div class="detail-section"><h4>Weather</h4>`;
+    html+=row('Temperature',wx.temp_c?.toFixed(1),'°C');
+    html+=row('Humidity',wx.humidity_pct?.toFixed(0),'%');
+    html+=row('Pressure',wx.pressure_hpa?.toFixed(0),'hPa');
+    html+=row('Air density',wx.air_density,'kg/m³');
+    html+=row('Wind',wx.wind_speed_kmh?.toFixed(0),'km/h');
+    html+=`</div>`;
+  }
+
+  if(s.notes_pre){html+=`<div class="detail-section"><h4>Pre-stint notes</h4><p style="font-size:13px;color:var(--text2);line-height:1.5">${s.notes_pre}</p></div>`}
+  if(s.notes_post){html+=`<div class="detail-section"><h4>Post-stint notes</h4><p style="font-size:13px;color:var(--text2);line-height:1.5">${s.notes_post}</p></div>`}
+
+  document.getElementById('historyDetail').innerHTML=html;
+  document.getElementById('historyListView').style.display='none';
+  document.getElementById('historyDetailView').style.display='block';
+}
+
+function closeDetail(){
+  document.getElementById('historyListView').style.display='block';
+  document.getElementById('historyDetailView').style.display='none';
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  if(name==='history') loadAllStints();
+  if(name==='tires') loadTireSets();
+}
+function toggleAdvanced(){
+  const sec=document.getElementById('advancedSection');
+  const open=sec.classList.toggle('open');
+  document.getElementById('advLabel').textContent=open?'Hide advanced setup':'Show advanced setup (12 fields)';
+}
+function updateSessionType(){
+  if(state.session) sb.from('sessions').update({session_type:document.getElementById('sessionType').value}).eq('id',state.session.id);
+}
+function updateUI(){renderTireList();updateTireSelect();renderHistory()}
+
+init();
+</script>
+</body>
+</html>
